@@ -5,7 +5,7 @@
 // @author      simple
 // @match       *://fontawesome.com/icons/*
 // @run-at      document-end
-// @version     2.0.0
+// @version     2.0.1
 // @grant       none
 // ==/UserScript==
 
@@ -28,15 +28,49 @@
         return '7.3.0';
     }
 
-    // 從 URL 取圖示資訊
+    // 取圖示資訊 — 優先從頁面 canonical / og 標籤拿，無論 URL 形式都穩定
+    // 支援的 URL 表單:
+    //   /icons/{iconName}?f={family}&s={style}           (舊)
+    //   /icons/{family}/{style}/{iconName}               (新 — v7.3)
     function getIconInfo() {
-        const match = window.location.pathname.match(/\/icons\/([^/?#]+)/);
-        if (!match) return null;
-        const iconName = decodeURIComponent(match[1]);
+        const canonical =
+            document.querySelector('link[rel="canonical"]')?.href ||
+            document.querySelector('meta[property="og:url"]')?.content || '';
+        let m = canonical.match(/\/icons\/([^/]+)\/([^/]+)\/([^/?#]+)/);
+        if (m) {
+            return { family: m[1], style: m[2], iconName: decodeURIComponent(m[3]) };
+        }
+
+        // 備援 1：og:image 帶 ?f=&s= 形式
+        const og = document.querySelector('meta[property="og:image"]')?.content || '';
+        const im = og.match(/\/social\/([^?#]+)\?([^"]+)/);
+        if (im) {
+            const p = new URLSearchParams(im[2].replace(/&amp;/g, '&'));
+            return {
+                iconName: decodeURIComponent(im[1]),
+                family: p.get('f') || 'classic',
+                style: p.get('s') || 'solid',
+            };
+        }
+
+        // 備援 2：解析當前 location（不一定可靠，但作最後一搏）
+        const segs = window.location.pathname.split('/').filter(Boolean);
         const params = new URLSearchParams(window.location.search);
-        const family = params.get('f') || 'classic';
-        const style = params.get('s') || 'solid';
-        return { iconName, family, style };
+        if (segs[0] === 'icons' && segs.length >= 4) {
+            return {
+                family: segs[1],
+                style: segs[2],
+                iconName: decodeURIComponent(segs[3]),
+            };
+        }
+        if (segs[0] === 'icons' && segs.length === 2) {
+            return {
+                iconName: decodeURIComponent(segs[1]),
+                family: params.get('f') || 'classic',
+                style: params.get('s') || 'solid',
+            };
+        }
+        return null;
     }
 
     // family + style → svgs 子目錄候選清單（依實測結果排序）
