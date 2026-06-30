@@ -5,7 +5,7 @@
 // @author      simple
 // @match       *://fontawesome.com/icons/*
 // @run-at      document-end
-// @version     2.0.1
+// @version     2.0.2
 // @grant       none
 // ==/UserScript==
 
@@ -112,14 +112,16 @@
 
         console.log(`[FA-DL] v${version} | ${iconName} | f=${family} s=${style}`);
 
-        // 組合所有候選 URL：先 svgs/，後 svgs-full/（Pro 完整版）
+        // 組合所有候選 URL：**先 svgs-full/**（640×640 完整 canvas，不裁切上下）
+        // 再 fallback 到 svgs/（512×512 legacy，會裁切高瘦圖示頂/底）
         const urls = [];
-        for (const fmt of ['svgs', 'svgs-full']) {
+        for (const fmt of ['svgs-full', 'svgs']) {
             for (const path of paths) {
                 urls.push(`https://site-assets.fontawesome.com/releases/v${version}/${fmt}/${path}/${iconName}.svg`);
             }
         }
         // ka-f.fontawesome.com 是備援 CDN
+        urls.push(`https://ka-f.fontawesome.com/releases/v${version}/svgs-full/${paths[0]}/${iconName}.svg`);
         urls.push(`https://ka-f.fontawesome.com/releases/v${version}/svgs/${paths[0]}/${iconName}.svg`);
 
         console.log(`[FA-DL] 📥 Trying ${urls.length} URL(s)...`);
